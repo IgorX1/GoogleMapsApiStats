@@ -1,0 +1,151 @@
+﻿<div class="container-fluid bg-success h-100 pb-5 pt-0 mb-0">
+    <h3 class="align-content-center pt-0">Статистика по кількості студентів-бюджетників на початок 2017/18 року за регіонами України</h3>
+    <div class="jumbotron bg-light px-0 mx-0 h-100 pt-1 position-relative">
+        
+        <div id="controls" class="nicebox">
+            <div>
+                <div id="census-variable">Україна</div>
+            </div>
+            <div id="legend">
+                <div id="census-min"></div>
+                <div class="color-key"><span id="data-caret">&#x25c6;</span></div>
+                <div id="census-max"></div>
+            </div>
+        </div>
+        <div id="data-box" class="nicebox">
+            <label id="data-label" for="data-value"></label>
+            <span id="data-value"></span>
+        </div>
+        
+        <!-- Google Maps map -->
+        <div id="map">
+        </div>
+    </div>
+</div>
+<script charset="utf-8">
+    function initMap() {
+
+        //Styles of the map
+        var mapStyle = [{
+            'stylers': [{'visibility': 'off'}]
+        }, {
+            'featureType': 'landscape',
+            'elementType': 'geometry',
+            'stylers': [{'visibility': 'on'}, {'color': '#fcfcfc'}]
+        }, {
+            'featureType': 'water',
+            'elementType': 'geometry',
+            'stylers': [{'visibility': 'on'}, {'color': '#bfd4ff'}]
+            }];
+
+        //Main parameters which set the general outfit of the map
+        var options = {
+            zoom: 6,
+            center: { lat: 49.432955, lng: 32.053781 }
+        }
+
+        //The map object which we work with
+        var map = new google.maps.Map(document.getElementById('map'), options);
+
+        loadRegionsOnMap();
+
+        var minStudents = 0;
+        var maxStudents = 0;
+
+        //Add styles for the regions
+        //Works for each region
+        map.data.setStyle(
+            function(feature) {
+                var color;
+                var num = feature.getProperty('num');
+
+                if (num < 1000) {
+                    color = '#380303';
+                }else if (num < 1500) {
+                    color = '#930e00';
+                } else if (num < 2500) {
+                    color = '#db510d';
+                } else if (num < 5000) {
+                    color = '#dbd70d';
+                } else if (num < 7500) {
+                    color = '#aadb0d';
+                } else color = '#22e20d';
+            
+
+                return ({
+                    fillColor: color,
+                    strokeColor: feature.getProperty('color'),
+                    strokeWeight: 2,
+                    fillOpacity: 0.75
+            });
+            }
+        );
+
+        map.data.addListener('mouseover', function(event) {
+            map.data.revertStyle();
+            map.data.overrideStyle(event.feature, { strokeWeight: 8, fillColor: '#4286f4' });
+            var nameOfAreaTB = document.getElementById('census-variable');
+            nameOfAreaTB.innerText = event.feature.getProperty('name').toString();
+            nameOfAreaTB.innerText += ": ";
+            nameOfAreaTB.innerText += event.feature.getProperty('num').toString();
+
+            var percent = (event.feature.getProperty('num') - minStudents) / (maxStudents - minStudents) * 100;
+            document.getElementById('data-caret').style.display = 'block';
+            document.getElementById('data-caret').style.paddingLeft = percent + '%';
+
+        });
+
+        map.data.addListener('mouseout', function(event) {
+            map.data.revertStyle();
+            var nameOfAreaTB = document.getElementById('census-variable');
+            nameOfAreaTB.innerText = "Україна";
+            document.getElementById('data-caret').style.display = 'none';
+        });
+
+        //The marker for my faculty
+        var marker = new google.maps.Marker({
+            position: { lat: 50.383273, lng: 30.470831 },
+            map: map
+        });
+
+        //Info window for the faculty marker
+        var infoWindow = new google.maps.InfoWindow({
+            content:"<h5><a href='http://csc.knu.ua/uk/' target='_blank'>Рідний факультет кібернетики</a></h5>"
+        });
+
+        //Onclick for the faculty marker
+        marker.addListener('click',
+            function() {
+                infoWindow.open(map, marker);
+            });
+
+        //Load Ukraine regions from geojson
+        function loadRegionsOnMap() {
+            @{
+                string baseUrl = Request.Url.GetLeftPart(UriPartial.Authority);
+                baseUrl += "/Content/areas_full.json";
+            }
+            map.data.loadGeoJson('@baseUrl', {}, function (features) {
+                var nums = [];
+                var i = 0;
+                map.data.forEach(function(feature) {
+                    nums[i++] = feature.getProperty('num');
+                });
+                var maxVal = Math.max(...nums);
+                var minVal = Math.min(...nums);
+                displayStatsOnMapControls(maxVal, minVal);
+
+                maxStudents = maxVal;
+                minStudents = minVal;
+            });
+            
+        }; 
+
+        function displayStatsOnMapControls(maxVal, minVal) {
+            document.getElementById('census-min').innerText = minVal;
+            document.getElementById('census-max').innerText = maxVal;
+        }
+
+
+    }
+</script>
